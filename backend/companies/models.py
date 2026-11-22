@@ -22,6 +22,11 @@ class Company(models.Model):
 
 
 class Membership(models.Model):
+    class Role(models.TextChoices):
+        ADMIN = "ADMIN", "Administrador"
+        SELLER = "SELLER", "Vendedor"
+        WAREHOUSE = "WAREHOUSE", "Bodeguero"
+
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -30,15 +35,21 @@ class Membership(models.Model):
     )
     role = models.CharField(
         max_length=10,
-        choices=[("OWNER", "Propietario"), ("ADMIN", "Administrador"), ("OPERATOR", "Operador")],
-        default="OPERATOR",
+        choices=Role.choices,
+        default=Role.SELLER,
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["company", "user"], name="unique_company_user")]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "user"], name="unique_company_user"),
+            models.CheckConstraint(
+                condition=models.Q(role__in=["ADMIN", "SELLER", "WAREHOUSE"]),
+                name="membership_valid_role",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user} - {self.company} ({self.role})"
